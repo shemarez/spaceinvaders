@@ -25,14 +25,8 @@ function Spaceship(game) {
     // this.startTime = game.timer.gameTime;
     this.spawnRate = 5000;
     this.lastSpawn = -1;
-
-
-
-
 };
 
-Spaceship.prototype = new Entity();
-Spaceship.prototype.constructor = Spaceship;
 
 Spaceship.prototype.update = function() {
     var time = Date.now();
@@ -124,8 +118,16 @@ Spaceship.prototype.collideBottom = function() {
     return (this.y + this.radius) > this.canvasHeight;
 };
 
+Spaceship.prototype.setXY = function(x, y) {
+    this.x = x;
+    this.y = y;
 
-function AlienShip(game) {
+};
+
+
+
+function AlienShip(game, velocity) {
+    // console.log(velocity);
     this.game = game;
     this.player = 1;
     this.radius = 20;
@@ -145,7 +147,13 @@ function AlienShip(game) {
     this.canvasHeight = 500;
     Entity.call(this, game, this.radius + Math.random() * (800 - this.radius * 2), this.radius + Math.random() * (800 - this.radius * 2));
 
-    this.velocity = { x: Math.random() * 500, y: Math.random() * 1000 };
+    if (this.velocity === undefined) {
+        this.velocity = { x: Math.random() * 500, y: Math.random() * 1000 };
+
+    } else {
+        this.velocity = velocity;
+
+    }
     var speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     if (speed > maxSpeed) {
         var ratio = maxSpeed / speed;
@@ -153,7 +161,6 @@ function AlienShip(game) {
         this.velocity.y *= ratio;
     }
 }
-
 
 AlienShip.prototype.collide = function(other) {
     return distance(this, other) < this.radius + other.radius;
@@ -410,10 +417,22 @@ Background.prototype.draw = function(ctx) {
     ctx.drawImage(this.img, this.x, this.y - this.canvasHeight, this.canvasWidth, this.canvasHeight);
 };
 
+
+Background.prototype.setXY = function(x, y) {
+    this.x = x;
+    this.y = y;
+};
+
+function LoadAlien(x, y) {
+    // body...
+}
 // the "main" code begins here
 var friction = 1;
 var acceleration = 1000000;
 var maxSpeed = 75;
+
+var socket = io.connect("http://76.28.150.193:8888");
+
 
 var ASSET_MANAGER = new AssetManager();
 
@@ -437,15 +456,64 @@ ASSET_MANAGER.downloadAll(function() {
     var gameEngine = new GameEngine();
     var ship = new Spaceship(gameEngine);
     var background = new Background(gameEngine, 0, 0);
-    gameEngine.addEntity(background);
-    gameEngine.addEntity(ship);
+    // gameEngine.addEntity(background);
+    // gameEngine.addEntity(ship);
     MAXALIENS = getRandomInt(10, 50);
+
+    var gameData = { spaceship: [], aliens: [], background: [] };
+
+    gameData.background.push(background.x);
+    gameData.background.push(background.y);
+    gameData.spaceship.push(ship.x);
+    gameData.spaceship.push(ship.y);
     for (var i = 0; i < MAXALIENS; i++) {
-        var alien = new AlienShip(gameEngine);
-        gameEngine.addEntity(alien);
-        aliens.push(alien);
+        var velocity = { x: Math.random() * 500, y: Math.random() * 1000 };
+
+        // var alien = new AlienShip(gameEngine);
+        // gameEngine.addEntity(alien);
+        gameData.aliens.push(velocity);
 
     }
+
+    var that = this;
+    // console.log(gameData.spaceship);
+    // console.log(gameData.aliens);
+
+    //save to server
+    socket.emit("save", { studentname: "Shema Rezanejad", statename: "Space Invaders", data: gameData });
+
+    // console.log(gameData);
+    //tells server to send a load event back to us
+    socket.emit("load", { studentname: "Shema Rezanejad", statename: "Space Invaders" });
+
+    //listens for server load event and data being passed
+    socket.on("load", function(data) {
+        // console.log(data);
+        var loadVelocities = data.data.aliens;
+        var loadBackground = data.data.background;
+        var loadSpaceship = data.data.spaceship;
+        // console.log(loadAliens.length);
+        background.setXY(loadBackground[0], loadBackground[1]);
+        ship.setXY(loadSpaceship[0], loadSpaceship[1]);
+
+        gameEngine.addEntity(background);
+        gameEngine.addEntity(ship);
+        // console.log(loadVelocities);
+        for (var i = 0; i < loadVelocities.length; i++) {
+            // console.log(loadAliens[i]);
+            var velocity = loadVelocities[i];
+
+            var alien = new AlienShip(gameEngine, velocity);
+            aliens.push(alien);
+            // console.log(velocity);
+            gameEngine.addEntity(alien);
+        }
+    });
+
+    socket.on("connect", function() {
+        console.log("Socket connected.")
+    });
+
 
     gameEngine.init(ctx);
     gameEngine.start();
