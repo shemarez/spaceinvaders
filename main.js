@@ -456,38 +456,49 @@ ASSET_MANAGER.downloadAll(function() {
     var gameEngine = new GameEngine();
     var ship = new Spaceship(gameEngine);
     var background = new Background(gameEngine, 0, 0);
-    // gameEngine.addEntity(background);
-    // gameEngine.addEntity(ship);
+    gameEngine.addEntity(background);
+    gameEngine.addEntity(ship);
     MAXALIENS = getRandomInt(10, 50);
 
-    var gameData = { spaceship: [], aliens: [], background: [] };
-
-    gameData.background.push(background.x);
-    gameData.background.push(background.y);
-    gameData.spaceship.push(ship.x);
-    gameData.spaceship.push(ship.y);
     for (var i = 0; i < MAXALIENS; i++) {
         var velocity = { x: Math.random() * 500, y: Math.random() * 1000 };
 
-        // var alien = new AlienShip(gameEngine);
-        // gameEngine.addEntity(alien);
-        gameData.aliens.push(velocity);
+        var alien = new AlienShip(gameEngine, velocity);
+        gameEngine.addEntity(alien);
+        aliens.push(alien);
+        // gameData.aliens.push(velocity);
 
     }
 
     var that = this;
-    // console.log(gameData.spaceship);
-    // console.log(gameData.aliens);
 
-    //save to server
-    socket.emit("save", { studentname: "Shema Rezanejad", statename: "Space Invaders", data: gameData });
+    var saveButton = document.getElementById("save").addEventListener("click", function(event) {
+        var gameData = { spaceship: [], aliens: [], background: [] };
+        gameData.background.push(background.x);
+        gameData.background.push(background.y);
+        gameData.spaceship.push(ship.x);
+        gameData.spaceship.push(ship.y);
 
-    // console.log(gameData);
-    //tells server to send a load event back to us
-    socket.emit("load", { studentname: "Shema Rezanejad", statename: "Space Invaders" });
+        for (var i = 0; i < aliens.length; i++) {
+            var alienVel = aliens[i].velocity;
 
-    //listens for server load event and data being passed
+            gameData.aliens.push(alienVel);
+
+        }
+
+        //save to server
+        socket.emit("save", { studentname: "Shema Rezanejad", statename: "Space Invaders", data: gameData });
+    });
+
+    var loadButton = document.getElementById("load").addEventListener("click", function(event) {
+        //tells server to send a load event back to us
+        socket.emit("load", { studentname: "Shema Rezanejad", statename: "Space Invaders" });
+    });
+
+    // //listens for server load event and data being passed
     socket.on("load", function(data) {
+        gameEngine.removeAllEntities();
+
         // console.log(data);
         var loadVelocities = data.data.aliens;
         var loadBackground = data.data.background;

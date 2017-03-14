@@ -65,6 +65,11 @@ GameEngine.prototype.removeEntity = function(entity) {
         }
     }
 };
+
+GameEngine.prototype.removeAllEntities = function() {
+    this.entities = [];
+}
+
 GameEngine.prototype.startInput = function() {
     console.log('Starting input');
     var that = this;
